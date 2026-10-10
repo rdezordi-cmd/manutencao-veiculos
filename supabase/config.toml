@@ -1,0 +1,10 @@
+# Configuração do projeto Supabase aplicada com `supabase config push`.
+# Só as propriedades declaradas aqui são alteradas no projeto remoto.
+project_id = "manutencao-veiculos"
+
+[auth]
+site_url = "https://rdezordi-cmd.github.io/manutencao-veiculos/"
+additional_redirect_urls = [
+  "https://rdezordi-cmd.github.io/manutencao-veiculos/",
+  "http://localhost:8080/",
+]

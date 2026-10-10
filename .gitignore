@@ -2,3 +2,8 @@
 Thumbs.db
 .vscode/
 .idea/
+
+# Supabase (arquivos locais / segredos)
+supabase/.temp/
+supabase/.branches/
+.supabase-db-password.txt
