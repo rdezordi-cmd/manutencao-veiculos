@@ -7,3 +7,6 @@ Thumbs.db
 supabase/.temp/
 supabase/.branches/
 .supabase-db-password.txt
+
+# Ferramentas locais do Claude Code
+.claude/

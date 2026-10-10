@@ -50,6 +50,17 @@ Isso faz os links de confirmação de e-mail e de redefinição de senha voltare
 - **Android (Chrome)**: abra o site → menu ⋮ → *Instalar app* / *Adicionar à tela inicial*
 - **iPhone (Safari)**: abra o site → botão Compartilhar → *Adicionar à Tela de Início*
 
+#### Detalhes do iPhone (iOS 16.4 ou mais recente recomendado)
+
+- No iPhone o app é instalado pelo **Safari** (o próprio app mostra um aviso explicando como). Depois de
+  instalado, abre em tela cheia, com ícone próprio, sem barra do navegador.
+- O app instalado guarda o login **separado do Safari**. Por isso o link de confirmação de cadastro
+  (que abre no Safari) não deixa o app logado: depois de confirmar o e-mail, volte ao app e entre com e-mail e senha.
+- A busca de marca/modelo/ano usa uma lista própria (o `<datalist>` padrão no iPhone só mostra sugestões
+  acima do teclado). Palavras como "turbo", "automático" e "manual" também encontram as abreviações da FIPE.
+- *Exportar CSV* abre o menu **Compartilhar** do iOS (salvar em Arquivos, enviar por WhatsApp, e-mail…).
+- Não é preciso App Store. Um app nativo na App Store exigiria Mac com Xcode e a conta Apple Developer (US$ 99/ano).
+
 ### 5. Convidar a família
 
 Na aba **Garagem**, toque em *Compartilhar* para enviar o código de convite. A pessoa cria uma conta

@@ -1,5 +1,6 @@
 import { sb, run, isConfigured } from './db.js';
 import * as fipe from './fipe.js';
+import { combo } from './combo.js';
 import {
   esc, brl, kmf, plural, today, fmtDate, planStatus, CATEGORIES, VEHICLE_TYPES, typeIcon, defaultPlansFor,
 } from './util.js';
@@ -74,6 +75,24 @@ const household = () => state.households.find((h) => h.id === state.hid);
 const isOwner = () => state.members.some((m) => m.user_id === state.user.id && m.role === 'owner');
 const sum = (list) => list.reduce((t, s) => t + Number(s.cost || 0), 0);
 const appUrl = () => location.origin + location.pathname;
+
+// iPhone/iPad (iPadOS se apresenta como Mac, mas tem tela touch)
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isInstalled = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+
+function iosInstallHint() {
+  let dismissed = false;
+  try { dismissed = localStorage.getItem('ios-hint') === '1'; } catch { /* sem storage */ }
+  if (!isIOS || isInstalled || dismissed) return '';
+  return `
+    <div class="card hint" id="ios-hint">
+      <b>📲 Instale no iPhone</b>
+      <p>No Safari, toque em <b>Compartilhar</b> <span class="share-icon" aria-hidden="true"></span>
+        e depois em <b>Adicionar à Tela de Início</b>. O app passa a abrir em tela cheia, como um aplicativo.</p>
+      <button class="link" data-act="ios-hint-close">Entendi</button>
+    </div>`;
+}
 
 const STATUS_LABEL = { overdue: 'Vencido', soon: 'Em breve', ok: 'Em dia' };
 const pill = (status, text) => `<span class="pill ${status}">${text ?? STATUS_LABEL[status]}</span>`;
@@ -212,6 +231,10 @@ const ACTIONS = {
   'vehicle-edit': (d) => vehicleForm(vehicleById(d.id)),
   km: (d) => kmForm(vehicleById(d.id)),
   'export-csv': () => exportCsv(),
+  'ios-hint-close': () => {
+    try { localStorage.setItem('ios-hint', '1'); } catch { /* sem storage */ }
+    document.getElementById('ios-hint')?.remove();
+  },
   'hh-rename': async () => {
     const name = prompt('Novo nome da garagem:', household().name);
     if (!name?.trim()) return;
@@ -295,6 +318,7 @@ function renderLogin() {
   tabbar.hidden = true;
   setTitle('Manutenções');
   view.innerHTML = `
+    ${iosInstallHint()}
     <div class="card auth">
       <div class="logo">🚗🔧</div>
       <h2>Controle de manutenções</h2>
@@ -316,7 +340,10 @@ function renderLogin() {
     if (e.submitter?.value === 'up') {
       const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: appUrl() } });
       if (error) throw error;
-      if (!data.session) msg.textContent = 'Conta criada! Confirme pelo link enviado ao seu e-mail e depois entre.';
+      if (!data.session) {
+        msg.textContent = 'Conta criada! Confirme pelo link enviado ao seu e-mail e depois entre aqui com e-mail e senha.'
+          + (isIOS ? ' No iPhone o link abre no Safari: depois de confirmar, volte para este app e entre.' : '');
+      }
     } else {
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (error) throw new Error(error.message === 'Invalid login credentials' ? 'E-mail ou senha inválidos' : error.message);
@@ -600,7 +627,7 @@ function viewReports() {
   view.querySelector('#rf-year').onchange = (e) => { f.year = e.target.value; viewReports(); };
 }
 
-function exportCsv() {
+async function exportCsv() {
   const f = reportFilter;
   const list = state.services.filter((s) =>
     (!f.vehicle || s.vehicle_id === f.vehicle) && (!f.year || s.service_date.startsWith(f.year)));
@@ -612,11 +639,18 @@ function exportCsv() {
       Number(s.cost).toFixed(2).replace('.', ','), s.notes];
   });
   const csv = '﻿' + [header, ...rows].map((r) => r.map(cell).join(';')).join('\r\n');
+  const name = `manutencoes-${today()}.csv`;
+  // no iPhone (principalmente com o app instalado) download não funciona: usa o menu Compartilhar
+  const file = new File([csv], name, { type: 'text/csv' });
+  if (isIOS && navigator.canShare?.({ files: [file] })) {
+    await navigator.share({ files: [file], title: 'Manutenções' }).catch(() => {});
+    return;
+  }
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-  a.download = `manutencoes-${today()}.csv`;
+  a.href = URL.createObjectURL(file);
+  a.download = name;
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
 function viewHousehold() {
@@ -656,7 +690,7 @@ function viewHousehold() {
         <button class="btn" data-act="logout">Sair da conta</button>
       </div>
     </div>
-    <p class="muted center">Dica: no celular, use “Adicionar à tela inicial” para instalar como aplicativo.</p>`;
+    ${iosInstallHint() || (isInstalled ? '' : '<p class="muted center">Dica: no celular, use “Adicionar à tela inicial” para instalar como aplicativo.</p>')}`;
 
   const sw = view.querySelector('#hh-switch');
   if (sw) sw.onchange = async () => {
@@ -685,10 +719,9 @@ function vehicleForm(v = null) {
       <h2>${isNew ? 'Novo veículo' : 'Editar veículo'}</h2>
       <label>Tipo<select name="vehicle_type">${Object.entries(VEHICLE_TYPES).map(([k, l]) =>
         `<option value="${k}" ${k === v.vehicle_type ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-      <label>Marca<input name="brand" list="dl-brands" required autocomplete="off" value="${esc(v.brand || '')}" placeholder="Digite para buscar"></label>
-      <label>Modelo<input name="model" list="dl-models" required autocomplete="off" value="${esc(v.model || '')}" placeholder="Escolha a marca primeiro"></label>
-      <label>Ano / combustível<input name="model_year" list="dl-years" autocomplete="off" value="${esc(v.model_year || '')}"></label>
-      <datalist id="dl-brands"></datalist><datalist id="dl-models"></datalist><datalist id="dl-years"></datalist>
+      <label>Marca<input name="brand" required value="${esc(v.brand || '')}" placeholder="Digite para buscar"></label>
+      <label>Modelo<input name="model" required value="${esc(v.model || '')}" placeholder="Escolha a marca primeiro"></label>
+      <label>Ano / combustível<input name="model_year" value="${esc(v.model_year || '')}"></label>
       <p class="fipe" id="fipe-info"></p>
       <div class="grid2">
         <label>Apelido<input name="nickname" value="${esc(v.nickname || '')}" placeholder="Ex.: Carro da Ana"></label>
@@ -710,7 +743,8 @@ function vehicleForm(v = null) {
 
   const form = m.querySelector('#vf');
   const info = m.querySelector('#fipe-info');
-  const fill = (id, list) => (m.querySelector(id).innerHTML = list.map((x) => `<option value="${esc(x.name)}">`).join(''));
+  const combos = { brand: combo(form.brand), model: combo(form.model), model_year: combo(form.model_year) };
+  const fill = (field, list) => combos[field].setItems(list.map((x) => x.name));
   const find = (list, name) => list.find((x) => x.name.toLowerCase() === name.trim().toLowerCase()) || null;
   const showInfo = (text) => {
     info.innerHTML = text ?? (sel.detail
@@ -722,7 +756,7 @@ function vehicleForm(v = null) {
     showInfo('Carregando marcas da Tabela FIPE…');
     try {
       sel.brands = await fipe.brands(sel.type);
-      fill('#dl-brands', sel.brands);
+      fill('brand', sel.brands);
       showInfo();
     } catch {
       showInfo('Tabela FIPE indisponível agora — digite marca, modelo e ano manualmente.');
@@ -731,21 +765,21 @@ function vehicleForm(v = null) {
   async function loadModels() {
     sel.brand = find(sel.brands, form.brand.value);
     sel.models = [];
-    fill('#dl-models', []);
+    fill('model', []);
     if (!sel.brand) return;
     try {
       sel.models = await fipe.models(sel.type, sel.brand.code);
-      fill('#dl-models', sel.models);
+      fill('model', sel.models);
     } catch (e) { showInfo(esc(e.message)); }
   }
   async function loadYears() {
     sel.model = sel.brand ? find(sel.models, form.model.value) : null;
     sel.years = [];
-    fill('#dl-years', []);
+    fill('model_year', []);
     if (!sel.model) return;
     try {
       sel.years = (await fipe.years(sel.type, sel.brand.code, sel.model.code)).map((y) => ({ ...y, name: fipe.yearLabel(y.name) }));
-      fill('#dl-years', sel.years);
+      fill('model_year', sel.years);
     } catch (e) { showInfo(esc(e.message)); }
   }
   async function loadDetail() {
@@ -935,11 +969,8 @@ function serviceForm(s) {
         `<option ${c === (s.category || 'Revisão') ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
       <fieldset id="plan-checks"></fieldset>
       <label>Descrição<input name="description" value="${esc(s.description || '')}" placeholder="Ex.: Óleo 5W30 + filtro (em branco = itens marcados)"></label>
-      <div class="grid2">
-        <label>Oficina / local<input name="shop" list="dl-shops" value="${esc(s.shop || '')}"></label>
-        <label>Valor (R$)<input type="number" name="cost" min="0" step="0.01" inputmode="decimal" value="${s.cost ?? ''}"></label>
-      </div>
-      <datalist id="dl-shops">${shops.map((x) => `<option value="${esc(x)}">`).join('')}</datalist>
+      <label>Oficina / local<input name="shop" value="${esc(s.shop || '')}"></label>
+      <label>Valor (R$)<input type="number" name="cost" min="0" step="0.01" inputmode="decimal" value="${s.cost ?? ''}"></label>
       <label>Observações<textarea name="notes" rows="2">${esc(s.notes || '')}</textarea></label>
       <div class="actions">
         ${isNew ? '' : '<button type="button" class="btn danger" id="sdel">Excluir</button>'}
@@ -950,6 +981,7 @@ function serviceForm(s) {
     </form>`);
 
   const form = m.querySelector('#sf');
+  combo(form.shop).setItems(shops);
   const checked = new Set(s.plan_ids || []);
   const renderChecks = () => {
     const plans = state.plans.filter((p) => p.vehicle_id === form.vehicle_id.value && (p.active || checked.has(p.id)));

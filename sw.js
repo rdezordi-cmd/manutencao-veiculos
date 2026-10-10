@@ -1,10 +1,10 @@
 // Service worker: permite instalar o app e abrir a interface mesmo sem conexão.
 // Estratégia "rede primeiro": sempre busca a versão nova e usa o cache só offline.
-const CACHE = 'manutencoes-v1';
+const CACHE = 'manutencoes-v2';
 const ASSETS = [
   './', './index.html', './css/style.css', './manifest.webmanifest',
-  './js/app.js', './js/db.js', './js/fipe.js', './js/util.js', './js/config.js',
-  './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
+  './js/app.js', './js/combo.js', './js/db.js', './js/fipe.js', './js/util.js', './js/config.js',
+  './icons/icon.svg', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png',
 ];
 
 self.addEventListener('install', (e) => {
