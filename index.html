@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Manutenções</title>
+  <meta name="description" content="Controle de manutenções, revisões e custos de veículos">
+  <meta name="theme-color" content="#1d4ed8">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Manutenções">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1 id="title">Manutenções</h1>
+    <button id="btn-refresh" class="icon-btn" aria-label="Atualizar">↻</button>
+  </header>
+
+  <main id="view"><p class="muted center">Carregando…</p></main>
+
+  <nav class="tabbar" id="tabbar" hidden>
+    <a href="#/" data-tab="painel"><span>🏠</span>Painel</a>
+    <a href="#/veiculos" data-tab="veiculos"><span>🚗</span>Veículos</a>
+    <a href="#/relatorios" data-tab="relatorios"><span>📊</span>Custos</a>
+    <a href="#/garagem" data-tab="garagem"><span>👥</span>Garagem</a>
+  </nav>
+
+  <dialog id="modal"><div id="modal-body"></div></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
